@@ -6,8 +6,29 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/Scenes/SampleScene.unity
-    guid: 99c9720ab356a0642a771bea13969a05
+    path: Assets/_Project/Menu/Scenes/Menu_version.unity
+    guid: fc474d4570df6e049a8dc5a089695f9f
+  - enabled: 1
+    path: Assets/_Project/Juegos/J01_Equilibrio/Scenes/Equilibrio.unity
+    guid: 3fa5a41a6c238cf499d75eda36dab1c1
+  - enabled: 1
+    path: Assets/_Project/Juegos/J02_Esquivo/Scenes/SaltaObjetos.unity
+    guid: 1db9eda34c6289545b415b8a02c629e4
+  - enabled: 1
+    path: Assets/_Project/Juegos/J03_Langosta/Scenes/BuscaDestruye.unity
+    guid: 5cd7227fa19c9f64b9563189c3849f8a
+  - enabled: 1
+    path: Assets/_Project/Juegos/J04_Platos/Scenes/Dishwashes.unity
+    guid: 8c9cfa26abfee488c85f1582747f6a02
+  - enabled: 1
+    path: Assets/_Project/Juegos/J05_Ritmo/Scenes/RCPComensal.unity
+    guid: 31ed3350774b1eb4abee35754192e846
+  - enabled: 1
+    path: Assets/_Project/_Shared/Scenes/EscenaHistoria1.unity
+    guid: f4f857b2581ccf440927ba6c5d09aeb2
+  - enabled: 1
+    path: Assets/_Project/_Shared/Scenes/UnderConstruction.unity
+    guid: 61b47ad82862a1a4388b20e6f9cf1a92
   m_configObjects:
     UnityEditor.XR.ARCore.ARCoreSettings: {fileID: 11400000, guid: 76acff842129361479f941e11183ab88, type: 2}
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
