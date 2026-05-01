@@ -1,6 +1,8 @@
 using UnityEngine;
 using TMPro;
 using UnityEngine.SceneManagement;
+using System.Collections;
+using System.Collections.Generic; // Necesario para gestionar la lista de posiciones
 
 public class LogicaChef : MonoBehaviour
 {
@@ -22,24 +24,56 @@ public class LogicaChef : MonoBehaviour
     private int eliminaciones = 0;
     private float cronometro;
     private bool juegoTerminado = false;
+    private bool cuentaAtrasActiva = true;
+
+    // --- SISTEMA ANTISUPERPOSICIÓN Y NO REPETICIÓN ---
+    private static List<int> indicesOcupados = new List<int>();
+    private int miIndiceActual = -1;
 
     void Start()
     {
         cronometro = tiempoLimite;
         if (botonReiniciar != null) botonReiniciar.SetActive(false);
-        if (musicaFondo != null && !musicaFondo.isPlaying) musicaFondo.Play();
+
+        // El chef empieza oculto durante la cuenta atrás
+        ToggleChef(false);
+        StartCoroutine(CuentaAtrasInicial());
+    }
+
+    IEnumerator CuentaAtrasInicial()
+    {
+        float tiempo = 5f;
+        while (tiempo > 0)
+        {
+            if (textoUI != null)
+                textoUI.text = "<color=yellow>PREPÁRATE</color>\n" + Mathf.Ceil(tiempo).ToString();
+            yield return new WaitForSeconds(1f);
+            tiempo--;
+        }
+
+        if (textoUI != null) textoUI.text = "¡YA!";
+        yield return new WaitForSeconds(0.5f);
+
+        // Activamos el juego
+        cuentaAtrasActiva = false;
+        ToggleChef(true);
         MoverChefAleatorio();
+        if (musicaFondo != null && !musicaFondo.isPlaying) musicaFondo.Play();
     }
 
     void Update()
     {
+        // Bloquea el juego si estamos en la cuenta atrás de 5s
+        if (cuentaAtrasActiva) return;
+
         Ray mirada = new Ray(Camera.main.transform.position, Camera.main.transform.forward);
         RaycastHit golpe;
 
         if (!juegoTerminado)
         {
             cronometro -= Time.deltaTime;
-            // SphereCast con radio 0.5 para detectar al chef
+
+            // Detección por mirada (SphereCast)
             if (Physics.SphereCast(mirada, 0.5f, out golpe, 100f) && golpe.transform == this.transform)
             {
                 contadorMirada += Time.deltaTime;
@@ -56,13 +90,9 @@ public class LogicaChef : MonoBehaviour
         }
         else
         {
-            // --- LÓGICA DE REINICIO MEJORADA ---
-            // Usamos un Raycast simple (más preciso) para el botón
+            // Lógica de reinicio por mirada
             if (Physics.Raycast(mirada, out golpe, 100f))
             {
-                // Para depurar: esto te dirá en la consola qué estás mirando exactamente
-                Debug.Log("Mirada puesta en: " + golpe.transform.name);
-
                 if (golpe.transform.gameObject == botonReiniciar)
                 {
                     contadorMirada += Time.deltaTime;
@@ -70,7 +100,10 @@ public class LogicaChef : MonoBehaviour
                         textoUI.text = "<color=green>REINICIANDO...</color>\n" + (tiempoBoton - contadorMirada).ToString("F1") + "s";
 
                     if (contadorMirada >= tiempoBoton)
+                    {
+                        indicesOcupados.Clear(); // Limpieza para la nueva partida
                         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+                    }
                 }
                 else
                 {
@@ -79,6 +112,54 @@ public class LogicaChef : MonoBehaviour
                 }
             }
         }
+    }
+
+    void MoverChefAleatorio()
+    {
+        if (puntosAparicion.Length < 2) return;
+
+        // Guardamos donde estábamos para no repetir el mismo sitio exacto
+        int indiceAnterior = miIndiceActual;
+
+        // Liberamos el punto que ocupábamos
+        if (miIndiceActual != -1) indicesOcupados.Remove(miIndiceActual);
+
+        int nuevoIndice = -1;
+        bool encontrado = false;
+        int intentos = 0;
+
+        // Buscamos un punto que no esté ocupado por otro chef Y que no sea el anterior
+        while (!encontrado && intentos < 20)
+        {
+            int candidato = Random.Range(0, puntosAparicion.Length);
+
+            if (!indicesOcupados.Contains(candidato) && candidato != indiceAnterior)
+            {
+                nuevoIndice = candidato;
+                encontrado = true;
+            }
+            intentos++;
+        }
+
+        // Caso de emergencia si fallan los intentos (forzar cambio de sitio)
+        if (!encontrado)
+        {
+            do
+            {
+                nuevoIndice = Random.Range(0, puntosAparicion.Length);
+            } while (nuevoIndice == indiceAnterior && puntosAparicion.Length > 1);
+        }
+
+        miIndiceActual = nuevoIndice;
+        indicesOcupados.Add(miIndiceActual);
+        transform.position = puntosAparicion[miIndiceActual].position;
+    }
+
+    void EliminarChef()
+    {
+        eliminaciones++;
+        if (eliminaciones >= maxEliminaciones) FinalizarJuego(true);
+        else MoverChefAleatorio();
     }
 
     void ActualizarInterfaz()
@@ -100,20 +181,10 @@ public class LogicaChef : MonoBehaviour
         }
     }
 
-    void EliminarChef()
+    void ToggleChef(bool estado)
     {
-        eliminaciones++;
-        if (eliminaciones >= maxEliminaciones) FinalizarJuego(true);
-        else MoverChefAleatorio();
-    }
-
-    void MoverChefAleatorio()
-    {
-        if (puntosAparicion.Length > 0)
-        {
-            int indice = Random.Range(0, puntosAparicion.Length);
-            transform.position = puntosAparicion[indice].position;
-        }
+        if (GetComponent<Renderer>() != null) GetComponent<Renderer>().enabled = estado;
+        if (GetComponent<Collider>() != null) GetComponent<Collider>().enabled = estado;
     }
 
     void FinalizarJuego(bool ganado)
@@ -122,10 +193,9 @@ public class LogicaChef : MonoBehaviour
         contadorMirada = 0f;
         if (musicaFondo != null) musicaFondo.Stop();
         if (botonReiniciar != null) botonReiniciar.SetActive(true);
-        ActualizarTextoFinal();
 
-        // Desactivamos render y collider del Chef
-        if (GetComponent<Renderer>() != null) GetComponent<Renderer>().enabled = false;
-        if (GetComponent<Collider>() != null) GetComponent<Collider>().enabled = false;
+        indicesOcupados.Remove(miIndiceActual); // Liberamos posición al terminar
+        ToggleChef(false);
+        ActualizarTextoFinal();
     }
 }
